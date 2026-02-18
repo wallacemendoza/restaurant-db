@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bella Cucina — Restaurant Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --bg2: #16161d;
+      --bg3: #1e1e28;
+      --border: #2a2a38;
+      --accent: #f59e0b;
+      --accent2: #10b981;
+      --accent3: #6366f1;
+      --accent4: #ef4444;
+      --text: #f1f1f3;
+      --muted: #7c7c94;
+      --card-radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: 220px; height: 100vh;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 24px 0; z-index: 100;
+    }
+    .logo {
+      padding: 0 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo h2 { font-size: 18px; color: var(--accent); letter-spacing: .5px; }
+    .logo p  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    nav { margin-top: 20px; flex: 1; }
+    nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 20px;
+      color: var(--muted); font-size: 14px;
+      text-decoration: none; cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    nav a:hover, nav a.active {
+      color: var(--text);
+      background: var(--bg3);
+      border-left-color: var(--accent);
+    }
+    nav a span.icon { font-size: 18px; }
+
+    /* MAIN */
+    .main { margin-left: 220px; padding: 28px 32px; }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 28px;
+    }
+    .topbar h1 { font-size: 22px; font-weight: 700; }
+    .topbar p  { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .live-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 7px 14px; border-radius: 30px; font-size: 13px;
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent2);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:.3; }
+    }
+
+    /* KPI CARDS */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--card-radius); padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .kpi::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    }
+    .kpi.amber::before { background: var(--accent); }
+    .kpi.green::before { background: var(--accent2); }
+    .kpi.purple::before { background: var(--accent3); }
+    .kpi.red::before { background: var(--accent4); }
+    .kpi label { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+    .kpi .value { font-size: 30px; font-weight: 700; margin: 6px 0 4px; }
+    .kpi .delta { font-size: 12px; }
+    .kpi .delta.up { color: var(--accent2); }
+    .kpi .delta.down { color: var(--accent4); }
+    .kpi .icon {
+      position: absolute; right: 16px; top: 16px;
+      font-size: 28px; opacity: .15;
+    }
+
+    /* CHART CARDS */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--card-radius); padding: 20px;
+    }
+    .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+    .card h3 span { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+    .card.full { grid-column: 1/-1; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      text-align: left; padding: 10px 12px;
+      color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 11px 12px; }
+    tbody tr:hover td { background: var(--bg3); }
+
+    .badge {
+      display: inline-block; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge.delivered { background: #10b98120; color: #10b981; }
+    .badge.preparing { background: #f59e0b20; color: #f59e0b; }
+    .badge.pending   { background: #6366f120; color: #818cf8; }
+    .badge.confirmed { background: #06b6d420; color: #22d3ee; }
+    .badge.cancelled { background: #ef444420; color: #ef4444; }
+
+    .star { color: var(--accent); }
+    .profit-bar-wrap { background: var(--bg); border-radius: 4px; height: 6px; width: 100%; margin-top: 4px; }
+    .profit-bar { height: 6px; border-radius: 4px; background: var(--accent2); }
+
+    /* PAGE SECTIONS */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* SCHEMA SECTION */
+    .schema-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .schema-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--card-radius); padding: 16px; font-size: 13px;
+    }
+    .schema-card h4 { color: var(--accent); margin-bottom: 10px; font-size: 14px; }
+    .schema-card .field {
+      display: flex; justify-content: space-between;
+      padding: 4px 0; border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .schema-card .field:last-child { border: none; }
+    .schema-card .type { color: var(--accent3); font-size: 11px; }
+    .schema-card .pk { color: var(--accent); font-size: 10px; font-weight: 700; }
+    .schema-card .fk { color: var(--accent2); font-size: 10px; }
+
+    /* QUERIES SECTION */
+    .query-list .query-item {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--card-radius); margin-bottom: 12px; overflow: hidden;
+    }
+    .query-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; cursor: pointer;
+    }
+    .query-header:hover { background: var(--bg3); }
+    .query-title { font-size: 14px; font-weight: 600; }
+    .query-tag {
+      font-size: 11px; padding: 3px 9px; border-radius: 20px;
+      background: var(--bg3); color: var(--accent3);
+    }
+    .query-body { display: none; padding: 0 18px 18px; }
+    .query-body.open { display: block; }
+    pre {
+      background: #0a0a0f; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; overflow-x: auto;
+      font-size: 12px; line-height: 1.6; color: #c9d1d9;
+    }
+    .kw { color: #ff7b72; } .fn { color: #d2a8ff; }
+    .cm { color: #7c7c94; font-style: italic; }
+    .str { color: #a5d6ff; } .num { color: #79c0ff; }
+
+    canvas { max-height: 260px; }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo">
+    <h2>🍝 Bella Cucina</h2>
+    <p>Restaurant Management</p>
+  </div>
+  <nav>
+    <a class="active" onclick="showPage('overview')" ><span class="icon">📊</span> Overview</a>
+    <a onclick="showPage('menu')">      <span class="icon">🍽️</span> Menu & Sales</a>
+    <a onclick="showPage('customers')"> <span class="icon">👥</span> Customers</a>
+    <a onclick="showPage('orders')">    <span class="icon">🧾</span> Orders</a>
+    <a onclick="showPage('schema')">    <span class="icon">🗄️</span> DB Schema</a>
+    <a onclick="showPage('queries')">   <span class="icon">⚡</span> SQL Queries</a>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <!-- ===== OVERVIEW ===== -->
+  <div id="overview" class="page active">
+    <div class="topbar">
+      <div>
+        <h1>Dashboard Overview</h1>
+        <p>Last 7 days · Bella Cucina Restaurant</p>
+      </div>
+      <div class="live-badge"><div class="live-dot"></div> Live Data</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi amber">
+        <span class="icon">💰</span>
+        <label>Total Revenue</label>
+        <div class="value">$591.50</div>
+        <div class="delta up">↑ 12.4% vs last week</div>
+      </div>
+      <div class="kpi green">
+        <span class="icon">🧾</span>
+        <label>Orders</label>
+        <div class="value">8</div>
+        <div class="delta up">↑ 3 more than last week</div>
+      </div>
+      <div class="kpi purple">
+        <span class="icon">📋</span>
+        <label>Avg Order Value</label>
+        <div class="value">$73.94</div>
+        <div class="delta up">↑ 5.2%</div>
+      </div>
+      <div class="kpi red">
+        <span class="icon">💸</span>
+        <label>Total Tips</label>
+        <div class="value">$62.00</div>
+        <div class="delta up">↑ 8.1%</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Revenue by Day <span>Last 7 days</span></h3>
+        <canvas id="revenueChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>Revenue by Category <span>All time</span></h3>
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Peak Hours <span>Orders by hour</span></h3>
+        <canvas id="peakChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>Payment Methods <span>Distribution</span></h3>
+        <canvas id="paymentChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MENU & SALES ===== -->
+  <div id="menu" class="page">
+    <div class="topbar"><div><h1>Menu & Sales</h1><p>Item performance and margins</p></div></div>
+    <div class="card">
+      <h3>Top Selling Items <span>By revenue · all time</span></h3>
+      <table>
+        <thead><tr><th>#</th><th>Item</th><th>Category</th><th>Price</th><th>Sold</th><th>Revenue</th><th>Margin</th><th>Margin %</th></tr></thead>
+        <tbody id="menuTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== CUSTOMERS ===== -->
+  <div id="customers" class="page">
+    <div class="topbar"><div><h1>Customers</h1><p>RFM segmentation and loyalty</p></div></div>
+    <div class="grid-2" style="margin-bottom:24px">
+      <div class="card">
+        <h3>Customer Segments <span>RFM model</span></h3>
+        <canvas id="segmentChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>Top Customers <span>By total spend</span></h3>
+        <table>
+          <thead><tr><th>Customer</th><th>Orders</th><th>Spent</th><th>Points</th><th>Segment</th></tr></thead>
+          <tbody id="customerTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ORDERS ===== -->
+  <div id="orders" class="page">
+    <div class="topbar"><div><h1>Orders</h1><p>Recent and active orders</p></div></div>
+    <div class="card">
+      <h3>All Orders <span>Last 7 days</span></h3>
+      <table>
+        <thead><tr><th>Order</th><th>Table</th><th>Customer</th><th>Waiter</th><th>Items</th><th>Total</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody id="ordersTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== DB SCHEMA ===== -->
+  <div id="schema" class="page">
+    <div class="topbar"><div><h1>Database Schema</h1><p>All tables · Normalized to 3NF · PostgreSQL</p></div></div>
+    <div class="schema-grid" id="schemaGrid"></div>
+  </div>
+
+  <!-- ===== SQL QUERIES ===== -->
+  <div id="queries" class="page">
+    <div class="topbar"><div><h1>SQL Queries</h1><p>Complex queries, views & stored procedures</p></div></div>
+    <div class="query-list" id="queryList"></div>
+  </div>
+
+</main>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────
+const menuData = [
+  {name:'Beef Tenderloin',  cat:'Mains',   price:38,  cost:15.0, sold:1, revenue:38},
+  {name:'Seafood Linguine', cat:'Pasta',   price:28,  cost:10.5, sold:1, revenue:28},
+  {name:'Grilled Salmon',   cat:'Mains',   price:26,  cost:9.5,  sold:1, revenue:26},
+  {name:'Truffle Bianca',   cat:'Pizza',   price:22,  cost:6.8,  sold:1, revenue:22},
+  {name:'Chicken Parmesan', cat:'Mains',   price:22,  cost:7.2,  sold:2, revenue:44},
+  {name:'Carbonara',        cat:'Pasta',   price:18,  cost:5.2,  sold:1, revenue:18},
+  {name:'Classic Smash',    cat:'Burgers', price:17,  cost:5.5,  sold:3, revenue:51},
+  {name:'BBQ Bacon Burger', cat:'Burgers', price:19,  cost:6.2,  sold:2, revenue:38},
+  {name:'Mushroom Risotto', cat:'Mains',   price:20,  cost:5.8,  sold:1, revenue:20},
+  {name:'House Wine',       cat:'Drinks',  price:9,   cost:2.5,  sold:6, revenue:54},
+].sort((a,b)=>b.revenue-a.revenue);
+
+const customerData = [
+  {name:'Sofia Alves',      orders:2, spent:133, points:900, segment:'VIP'},
+  {name:'Rafael Santos',    orders:1, spent:202, points:520, segment:'VIP'},
+  {name:'Lucas Oliveira',   orders:1, spent:50,  points:250, segment:'Loyal'},
+  {name:'Camila Rodrigues', orders:0, spent:0,   points:310, segment:'At Risk'},
+  {name:'Isabela Mendes',   orders:1, spent:91,  points:200, segment:'Loyal'},
+  {name:'Fernanda Costa',   orders:1, spent:65,  points:80,  segment:'New'},
+  {name:'Bruno Ferreira',   orders:1, spent:52,  points:140, segment:'Loyal'},
+  {name:'Diego Souza',      orders:1, spent:28,  points:55,  segment:'New'},
+];
+
+const ordersData = [
+  {id:'#008',table:'T05',customer:'Carlos Pereira', waiter:'Kevin M.',   items:3,  total:33.50, status:'preparing', time:'20 min ago'},
+  {id:'#007',table:'T06',customer:'Isabela Mendes', waiter:'Sandra N.',  items:5,  total:91.00, status:'delivered', time:'7 days ago'},
+  {id:'#006',table:'T03',customer:'Sofia Alves',    waiter:'Patricia D.',items:5,  total:95.00, status:'delivered', time:'6 days ago'},
+  {id:'#005',table:'T09',customer:'Diego Souza',    waiter:'Kevin M.',   items:3,  total:28.00, status:'delivered', time:'5 days ago'},
+  {id:'#004',table:'B01',customer:'Bruno Ferreira', waiter:'Patricia D.',items:3,  total:52.00, status:'delivered', time:'4 days ago'},
+  {id:'#003',table:'T08',customer:'Rafael Santos',  waiter:'Sandra N.',  items:8,  total:202.00,status:'delivered', time:'3 days ago'},
+  {id:'#002',table:'T02',customer:'Fernanda Costa', waiter:'Kevin M.',   items:4,  total:65.50, status:'delivered', time:'1 day ago'},
+  {id:'#001',table:'T03',customer:'Lucas Oliveira', waiter:'Patricia D.',items:3,  total:50.00, status:'delivered', time:'2 days ago'},
+];
+
+const schemaData = [
+  {table:'categories',  fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'name',t:'VARCHAR(100)',k:''},{n:'description',t:'TEXT',k:''},{n:'display_order',t:'INT',k:''}]},
+  {table:'menu_items',  fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'category_id',t:'INT',k:'FK'},{n:'name',t:'VARCHAR(150)',k:''},{n:'price',t:'NUMERIC(10,2)',k:''},{n:'cost',t:'NUMERIC(10,2)',k:''},{n:'is_available',t:'BOOLEAN',k:''},{n:'calories',t:'INT',k:''}]},
+  {table:'restaurant_tables',fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'number',t:'VARCHAR(10)',k:''},{n:'capacity',t:'INT',k:''},{n:'location',t:'VARCHAR(50)',k:''},{n:'is_active',t:'BOOLEAN',k:''}]},
+  {table:'customers',   fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'first_name',t:'VARCHAR(100)',k:''},{n:'last_name',t:'VARCHAR(100)',k:''},{n:'email',t:'VARCHAR(200)',k:''},{n:'loyalty_points',t:'INT',k:''},{n:'notes',t:'TEXT',k:''}]},
+  {table:'staff',       fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'first_name',t:'VARCHAR(100)',k:''},{n:'role',t:'staff_role ENUM',k:''},{n:'email',t:'VARCHAR(200)',k:''},{n:'hire_date',t:'DATE',k:''}]},
+  {table:'orders',      fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'table_id',t:'INT',k:'FK'},{n:'customer_id',t:'INT',k:'FK'},{n:'waiter_id',t:'INT',k:'FK'},{n:'status',t:'order_status ENUM',k:''},{n:'created_at',t:'TIMESTAMPTZ',k:''}]},
+  {table:'order_items', fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'order_id',t:'INT',k:'FK'},{n:'menu_item_id',t:'INT',k:'FK'},{n:'quantity',t:'INT',k:''},{n:'unit_price',t:'NUMERIC(10,2)',k:''},{n:'notes',t:'TEXT',k:''}]},
+  {table:'payments',    fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'order_id',t:'INT',k:'FK'},{n:'amount',t:'NUMERIC(10,2)',k:''},{n:'method',t:'payment_method ENUM',k:''},{n:'tip_amount',t:'NUMERIC(10,2)',k:''}]},
+  {table:'reservations',fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'customer_id',t:'INT',k:'FK'},{n:'table_id',t:'INT',k:'FK'},{n:'party_size',t:'INT',k:''},{n:'reserved_at',t:'TIMESTAMPTZ',k:''},{n:'status',t:'reservation_status ENUM',k:''}]},
+  {table:'ingredients', fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'supplier_id',t:'INT',k:'FK'},{n:'name',t:'VARCHAR(150)',k:''},{n:'unit',t:'VARCHAR(30)',k:''},{n:'stock_quantity',t:'NUMERIC(10,3)',k:''}]},
+  {table:'suppliers',   fields:[{n:'id',t:'SERIAL',k:'PK'},{n:'name',t:'VARCHAR(150)',k:''},{n:'contact',t:'VARCHAR(100)',k:''},{n:'email',t:'VARCHAR(200)',k:''}]},
+  {table:'recipes',     fields:[{n:'menu_item_id',t:'INT',k:'FK PK'},{n:'ingredient_id',t:'INT',k:'FK PK'},{n:'quantity_needed',t:'NUMERIC(10,3)',k:''}]},
+];
+
+const queryData = [
+  {title:'Monthly Revenue with MoM Growth', tag:'Window Function',
+   sql:`<span class="kw">SELECT</span>
+  TO_CHAR(DATE_TRUNC(<span class="str">'month'</span>, o.created_at), <span class="str">'YYYY-MM'</span>) <span class="kw">AS</span> month,
+  COUNT(<span class="kw">DISTINCT</span> o.id)                         <span class="kw">AS</span> orders,
+  <span class="fn">ROUND</span>(<span class="fn">SUM</span>(oi.quantity * oi.unit_price)::<span class="kw">NUMERIC</span>, <span class="num">2</span>) <span class="kw">AS</span> revenue,
+  <span class="fn">ROUND</span>(
+    (<span class="fn">SUM</span>(oi.quantity * oi.unit_price) - <span class="fn">LAG</span>(<span class="fn">SUM</span>(oi.quantity * oi.unit_price))
+      <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> DATE_TRUNC(<span class="str">'month'</span>, o.created_at)))
+    / <span class="fn">NULLIF</span>(<span class="fn">LAG</span>(<span class="fn">SUM</span>(oi.quantity * oi.unit_price))
+      <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> DATE_TRUNC(<span class="str">'month'</span>, o.created_at)), <span class="num">0</span>) * <span class="num">100</span>, <span class="num">1</span>
+  )                                        <span class="kw">AS</span> mom_growth_pct
+<span class="kw">FROM</span> orders o
+<span class="kw">JOIN</span> order_items oi <span class="kw">ON</span> oi.order_id = o.id <span class="kw">AND NOT</span> oi.is_voided
+<span class="kw">WHERE</span> o.status = <span class="str">'delivered'</span>
+<span class="kw">GROUP BY</span> DATE_TRUNC(<span class="str">'month'</span>, o.created_at)
+<span class="kw">ORDER BY</span> month;`},
+  {title:'Customer RFM Segmentation', tag:'CTE · CASE',
+   sql:`<span class="kw">WITH</span> rfm <span class="kw">AS</span> (
+  <span class="kw">SELECT</span>
+    c.id,
+    <span class="fn">CONCAT</span>(c.first_name, <span class="str">' '</span>, c.last_name) <span class="kw">AS</span> customer,
+    <span class="fn">MAX</span>(o.created_at)                  <span class="kw">AS</span> last_order,
+    <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> o.id)              <span class="kw">AS</span> frequency,
+    <span class="fn">SUM</span>(oi.quantity * oi.unit_price)   <span class="kw">AS</span> monetary
+  <span class="kw">FROM</span> customers c
+  <span class="kw">JOIN</span> orders o       <span class="kw">ON</span> o.customer_id = c.id <span class="kw">AND</span> o.status = <span class="str">'delivered'</span>
+  <span class="kw">JOIN</span> order_items oi <span class="kw">ON</span> oi.order_id = o.id <span class="kw">AND NOT</span> oi.is_voided
+  <span class="kw">GROUP BY</span> c.id, c.first_name, c.last_name
+)
+<span class="kw">SELECT</span>
+  customer, frequency,
+  <span class="fn">ROUND</span>(monetary::<span class="kw">NUMERIC</span>, <span class="num">2</span>) <span class="kw">AS</span> total_spent,
+  <span class="kw">CASE</span>
+    <span class="kw">WHEN</span> frequency >= <span class="num">5</span> <span class="kw">AND</span> monetary > <span class="num">200</span> <span class="kw">THEN</span> <span class="str">'VIP'</span>
+    <span class="kw">WHEN</span> frequency >= <span class="num">3</span> <span class="kw">AND</span> monetary > <span class="num">100</span> <span class="kw">THEN</span> <span class="str">'Loyal'</span>
+    <span class="kw">WHEN</span> CURRENT_DATE - DATE(last_order) <= <span class="num">7</span>  <span class="kw">THEN</span> <span class="str">'New'</span>
+    <span class="kw">ELSE</span> <span class="str">'At Risk'</span>
+  <span class="kw">END</span> <span class="kw">AS</span> segment
+<span class="kw">FROM</span> rfm <span class="kw">ORDER BY</span> monetary <span class="kw">DESC</span>;`},
+  {title:'Market Basket Analysis (Items Ordered Together)', tag:'Self JOIN',
+   sql:`<span class="kw">SELECT</span>
+  a.name <span class="kw">AS</span> item_a,
+  b.name <span class="kw">AS</span> item_b,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> co_occurrences
+<span class="kw">FROM</span> order_items oi1
+<span class="kw">JOIN</span> order_items oi2
+  <span class="kw">ON</span> oi1.order_id = oi2.order_id
+  <span class="kw">AND</span> oi1.menu_item_id < oi2.menu_item_id
+<span class="kw">JOIN</span> menu_items a <span class="kw">ON</span> a.id = oi1.menu_item_id
+<span class="kw">JOIN</span> menu_items b <span class="kw">ON</span> b.id = oi2.menu_item_id
+<span class="kw">GROUP BY</span> a.name, b.name
+<span class="kw">HAVING</span> <span class="fn">COUNT</span>(*) >= <span class="num">2</span>
+<span class="kw">ORDER BY</span> co_occurrences <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">20</span>;`},
+  {title:'place_order() — Stored Function', tag:'PL/pgSQL Function',
+   sql:`<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">place_order</span>(
+  p_table_id    INT,
+  p_customer_id INT,
+  p_waiter_id   INT,
+  p_items       JSONB   <span class="cm">-- [{"menu_item_id":1,"quantity":2,"notes":"..."}]</span>
+)
+<span class="kw">RETURNS</span> INT <span class="kw">AS</span> $$
+<span class="kw">DECLARE</span>
+  v_order_id  INT;
+  v_item      JSONB;
+  v_price     NUMERIC(<span class="num">10</span>,<span class="num">2</span>);
+  v_available BOOLEAN;
+<span class="kw">BEGIN</span>
+  <span class="kw">INSERT INTO</span> orders (table_id, customer_id, waiter_id, status)
+  <span class="kw">VALUES</span> (p_table_id, p_customer_id, p_waiter_id, <span class="str">'confirmed'</span>)
+  <span class="kw">RETURNING</span> id <span class="kw">INTO</span> v_order_id;
+
+  <span class="kw">FOR</span> v_item <span class="kw">IN SELECT</span> * <span class="kw">FROM</span> <span class="fn">jsonb_array_elements</span>(p_items) <span class="kw">LOOP</span>
+    <span class="kw">SELECT</span> price, is_available
+    <span class="kw">INTO</span> v_price, v_available
+    <span class="kw">FROM</span> menu_items <span class="kw">WHERE</span> id = (v_item->><span class="str">'menu_item_id'</span>)::<span class="kw">INT</span>;
+
+    <span class="kw">IF NOT</span> v_available <span class="kw">THEN</span>
+      <span class="kw">RAISE EXCEPTION</span> <span class="str">'Item % not available'</span>, v_item->><span class="str">'menu_item_id'</span>;
+    <span class="kw">END IF</span>;
+
+    <span class="kw">INSERT INTO</span> order_items (order_id, menu_item_id, quantity, unit_price, notes)
+    <span class="kw">VALUES</span> (v_order_id, (v_item->><span class="str">'menu_item_id'</span>)::<span class="kw">INT</span>,
+            (v_item->><span class="str">'quantity'</span>)::<span class="kw">INT</span>, v_price, v_item->><span class="str">'notes'</span>);
+  <span class="kw">END LOOP</span>;
+  <span class="kw">RETURN</span> v_order_id;
+<span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;`},
+  {title:'Check Table Availability', tag:'PL/pgSQL Function',
+   sql:`<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">check_table_availability</span>(
+  p_party_size   INT,
+  p_datetime     TIMESTAMPTZ,
+  p_duration_min INT <span class="kw">DEFAULT</span> <span class="num">90</span>
+)
+<span class="kw">RETURNS TABLE</span> (table_id INT, table_num VARCHAR, capacity INT, location VARCHAR)
+<span class="kw">AS</span> $$
+<span class="kw">BEGIN</span>
+  <span class="kw">RETURN QUERY</span>
+  <span class="kw">SELECT</span> rt.id, rt.number, rt.capacity, rt.location
+  <span class="kw">FROM</span> restaurant_tables rt
+  <span class="kw">WHERE</span> rt.is_active = <span class="kw">TRUE</span>
+    <span class="kw">AND</span> rt.capacity >= p_party_size
+    <span class="kw">AND</span> rt.id <span class="kw">NOT IN</span> (
+      <span class="kw">SELECT</span> r.table_id <span class="kw">FROM</span> reservations r
+      <span class="kw">WHERE</span> r.status <span class="kw">IN</span> (<span class="str">'confirmed'</span>, <span class="str">'seated'</span>)
+        <span class="kw">AND</span> r.reserved_at < p_datetime + (p_duration_min || <span class="str">' minutes'</span>)::<span class="kw">INTERVAL</span>
+        <span class="kw">AND</span> r.reserved_at + (p_duration_min || <span class="str">' minutes'</span>)::<span class="kw">INTERVAL</span> > p_datetime
+    )
+  <span class="kw">ORDER BY</span> rt.capacity <span class="kw">ASC</span>;
+<span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;
+
+<span class="cm">-- Usage:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">check_table_availability</span>(<span class="num">4</span>, NOW() + <span class="kw">INTERVAL</span> <span class="str">'2 hours'</span>);`},
+];
+
+// ─── RENDER ─────────────────────────────────────────────────
+const C = { text:'#f1f1f3', muted:'#7c7c94', border:'#2a2a38',
+            amber:'#f59e0b', green:'#10b981', purple:'#6366f1', red:'#ef4444',
+            bg3:'#1e1e28' };
+
+function mkChart(id, type, labels, datasets, opts={}) {
+  new Chart(document.getElementById(id), {
+    type, data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:C.muted, boxWidth:12, font:{size:11}}}},
+      scales: type!=='doughnut'&&type!=='pie' ? {
+        x:{ticks:{color:C.muted,font:{size:11}}, grid:{color:C.border}},
+        y:{ticks:{color:C.muted,font:{size:11}}, grid:{color:C.border}}
+      } : undefined,
+      ...opts
+    }
+  });
+}
+
+// Overview charts
+mkChart('revenueChart','bar',
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+  [{label:'Revenue ($)',data:[50,65,202,52,28,95,91],
+    backgroundColor:'#f59e0b80',borderColor:'#f59e0b',borderWidth:2,borderRadius:5}]);
+
+mkChart('categoryChart','doughnut',
+  ['Mains','Drinks','Burgers','Pasta','Pizza','Desserts','Starters'],
+  [{data:[128,54,89,46,38,28,22.5],
+    backgroundColor:['#f59e0b','#10b981','#6366f1','#ef4444','#06b6d4','#ec4899','#84cc16'],
+    borderWidth:0}]);
+
+mkChart('peakChart','line',
+  ['12pm','1pm','2pm','6pm','7pm','8pm','9pm'],
+  [{label:'Orders',data:[2,3,1,1,3,4,2],
+    borderColor:'#6366f1',backgroundColor:'#6366f120',fill:true,tension:.4,pointRadius:4}]);
+
+mkChart('paymentChart','doughnut',
+  ['Credit Card','PIX','Cash','Debit Card'],
+  [{data:[4,1,1,1],
+    backgroundColor:['#f59e0b','#10b981','#6366f1','#06b6d4'],
+    borderWidth:0}]);
+
+// Menu table
+const mt = document.getElementById('menuTable');
+menuData.forEach((m,i) => {
+  const margin = ((m.price-m.cost)/m.price*100).toFixed(0);
+  const profit = (m.revenue - m.cost*m.sold).toFixed(2);
+  mt.innerHTML += `<tr>
+    <td>${i+1}</td><td><strong>${m.name}</strong></td><td>${m.cat}</td>
+    <td>$${m.price.toFixed(2)}</td><td>${m.sold}</td>
+    <td>$${m.revenue.toFixed(2)}</td>
+    <td>$${profit}</td>
+    <td>
+      <div style="font-size:12px;color:#10b981">${margin}%</div>
+      <div class="profit-bar-wrap"><div class="profit-bar" style="width:${margin}%"></div></div>
+    </td>
+  </tr>`;
+});
+
+// Customer segment chart
+mkChart('segmentChart','doughnut',
+  ['VIP','Loyal','New','At Risk'],
+  [{data:[2,3,2,1],
+    backgroundColor:['#f59e0b','#10b981','#6366f1','#ef4444'],
+    borderWidth:0}]);
+
+// Customer table
+const ct = document.getElementById('customerTable');
+const segColor = {VIP:'amber',Loyal:'delivered',New:'confirmed','At Risk':'cancelled'};
+customerData.sort((a,b)=>b.spent-a.spent).forEach(c => {
+  ct.innerHTML += `<tr>
+    <td><strong>${c.name}</strong></td>
+    <td>${c.orders}</td>
+    <td>$${c.spent}</td>
+    <td>⭐ ${c.points}</td>
+    <td><span class="badge ${segColor[c.segment]||'pending'}">${c.segment}</span></td>
+  </tr>`;
+});
+
+// Orders table
+const ot = document.getElementById('ordersTable');
+ordersData.forEach(o => {
+  ot.innerHTML += `<tr>
+    <td><strong>${o.id}</strong></td>
+    <td>${o.table}</td><td>${o.customer}</td><td>${o.waiter}</td>
+    <td>${o.items}</td><td><strong>$${o.total.toFixed(2)}</strong></td>
+    <td><span class="badge ${o.status}">${o.status}</span></td>
+    <td style="color:var(--muted)">${o.time}</td>
+  </tr>`;
+});
+
+// Schema
+const sg = document.getElementById('schemaGrid');
+schemaData.forEach(t => {
+  sg.innerHTML += `<div class="schema-card">
+    <h4>📋 ${t.table}</h4>
+    ${t.fields.map(f=>`<div class="field">
+      <span>${f.n}</span>
+      <span>
+        <span class="type">${f.t}</span>
+        ${f.k.includes('PK')?'<span class="pk"> PK</span>':''}
+        ${f.k.includes('FK')?'<span class="fk"> FK</span>':''}
+      </span>
+    </div>`).join('')}
+  </div>`;
+});
+
+// Queries
+const ql = document.getElementById('queryList');
+queryData.forEach((q,i) => {
+  ql.innerHTML += `<div class="query-item">
+    <div class="query-header" onclick="toggleQuery(${i})">
+      <span class="query-title">⚡ ${q.title}</span>
+      <span class="query-tag">${q.tag}</span>
+    </div>
+    <div class="query-body" id="q${i}"><pre>${q.sql}</pre></div>
+  </div>`;
+});
+
+// ─── NAVIGATION ─────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function toggleQuery(i) {
+  const el = document.getElementById('q'+i);
+  el.classList.toggle('open');
+}
+</script>
+</body>
+</html>
